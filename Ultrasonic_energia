@@ -1,0 +1,31 @@
+long duration;
+int distance;
+
+void setup() {
+  // put your setup code here, to run once:
+  pinMode(P3_0,INPUT); //echo
+  pinMode(P3_2,OUTPUT); //trig
+  pinMode(PUSH2,INPUT_PULLUP); //button triggers
+  Serial.begin(9600);
+}
+
+void loop() {
+  // put your main code here, to run repeatedly: 
+    // Clears the trigPin
+  digitalWrite(P3_2, LOW);
+  delayMicroseconds(2);
+  // Sets the trigPin on HIGH state for 10 micro seconds
+  digitalWrite(P3_2, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(P3_2, LOW);
+  // Reads the echoPin, returns the sound wave travel time in microseconds
+  duration = pulseIn(P3_0, HIGH);
+  // Calculating the distance
+  distance = duration * 0.034 / 2;
+  // Prints the distance on the Serial Monitor
+  if(distance < 5)
+  {
+    Serial.print("ALERT");
+    Serial.print("\n");
+  }
+}
