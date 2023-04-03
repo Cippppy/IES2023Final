@@ -22,6 +22,7 @@ int main(void)
     ButtonInit();               // Method to initialize buttons
     ServoInit();                // Method to initialize servo pin
     TimerB3Init();              // Method to initialize TimerB3 which does the duty cycle
+    AlarmInit();
 
     // Disable the GPIO power-on default high-impedance mode to activate
     // previously configured port settings
@@ -73,8 +74,6 @@ void TimerB3Init() {
 
     TB3CCTL1 = OUTMOD_7;                      // CCR1 reset/set
     TB3CCR1 = 20000*0.075;                   // CCR1 PWM duty cycle
-    TB3CCR2 = 20000;
-    TB3CCR3 = 20000;
 
     TB3CTL = TBSSEL__SMCLK | MC__UP | TBCLR;  // SMCLK, up mode, clear TBR
 }
@@ -91,13 +90,9 @@ __interrupt void Port_2(void)
     P2IFG &= ~BIT3;                         // Clear P2.3 IFG
     if(TB3CCR1 >= 20000*0.125) {            // If duty cycle is max, stay at max
         TB3CCR1 = 20000*0.125;
-        TB3CCR2 = 0;
-        TB3CCR3 = 0;
     }
     else {
         TB3CCR1 += 100;                     // Else increase duty cycle by 10%
-        TB3CCR2 -= 1000;
-        TB3CCR3 -= 1000;
     }
 }
 
@@ -108,12 +103,8 @@ __interrupt void Port_4(void)
     P4IFG &= ~BIT1;                         // Clear P4.1 IFG
     if(TB3CCR1 <= 20000*0.03) {             // If duty cycle is at min, stay at min
         TB3CCR1 = 20000*0.03;
-        TB3CCR2 = 20000;
-        TB3CCR3 = 20000;
     }
     else {
         TB3CCR1 -= 100;                     // Else decrease duty cycle by 10%
-        TB3CCR2 += 1000;
-        TB3CCR3 += 1000;
     }
 }
