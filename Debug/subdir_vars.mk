@@ -9,21 +9,21 @@ CMD_SRCS += \
 ../lnk_msp430fr2355.cmd 
 
 C_SRCS += \
-../Ultrasonic.c 
+../Final.c 
 
 C_DEPS += \
-./Ultrasonic.d 
+./Final.d 
 
 OBJS += \
-./Ultrasonic.obj 
+./Final.obj 
 
 OBJS__QUOTED += \
-"Ultrasonic.obj" 
+"Final.obj" 
 
 C_DEPS__QUOTED += \
-"Ultrasonic.d" 
+"Final.d" 
 
 C_SRCS__QUOTED += \
-"../Ultrasonic.c" 
+"../Final.c" 
 
 

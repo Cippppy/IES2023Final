@@ -10,7 +10,7 @@ GEN_OPTS__FLAG :=
 GEN_CMDS__FLAG := 
 
 ORDERED_OBJS += \
-"./Ultrasonic.obj" \
+"./Final.obj" \
 "./Drivers/FR2355_UART_Driver.obj" \
 "./Drivers/GPIO_Driver.obj" \
 "../lnk_msp430fr2355.cmd" \
@@ -146,8 +146,8 @@ Final.out: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
 # Other Targets
 clean:
 	-$(RM) $(EXE_OUTPUTS__QUOTED)
-	-$(RM) "Ultrasonic.obj" "Drivers\FR2355_UART_Driver.obj" "Drivers\GPIO_Driver.obj" 
-	-$(RM) "Ultrasonic.d" "Drivers\FR2355_UART_Driver.d" "Drivers\GPIO_Driver.d" 
+	-$(RM) "Final.obj" "Drivers\FR2355_UART_Driver.obj" "Drivers\GPIO_Driver.obj" 
+	-$(RM) "Final.d" "Drivers\FR2355_UART_Driver.d" "Drivers\GPIO_Driver.d" 
 	-@echo 'Finished clean'
 	-@echo ' '
 
