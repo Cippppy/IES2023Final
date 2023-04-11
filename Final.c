@@ -9,14 +9,16 @@
 // Variable Instantiation
 char Vibration_Data_In;
 char Temperature_Data_In;
-unsigned char alerts = 0;
-unsigned char state = 0;
-char text[] = {'A','l','e','r','t','s'};
-volatile unsigned long distance;
-volatile unsigned long countLow = 0;    // Used to count how long Pin 2.3 is pressed
-volatile unsigned long countHigh = 0;
-volatile unsigned long pulseCount = 0;
-volatile unsigned long pulseWidth = 0;
+unsigned char state = 0;    // Holds state value if we do state machine
+
+// Text that prints to terminal if distance < 15
+char alertText[] = {'D','A','N','G','E','R', ' ','N','E','A','R'};
+
+// Text that prints to terminal when uart connects
+char connectedText[] = {'S','u','c','c','e','s','s','f','u','l','l','y',' ','C','o','n','n','e','c','t','e','d'};
+
+volatile unsigned long distance = 20;    // Holds distance calculated by ultrasonic sensor
+volatile unsigned int pulseCount = 0;   // Holds count used to calculate distance
 
 // Method Instantiation
 void Init_HCSR04();
@@ -28,7 +30,7 @@ void Init_TEMP();
 void Init_CO2();
 void Init_UART_Pins();
 void Run_Ultrasonic();
-void Ultrasonic_Wait(unsigned long timeToWait);
+void Ultrasonic_Wait(unsigned int timeToWait);
 
 
 void main(void)
@@ -43,6 +45,7 @@ void main(void)
     Init_CO2();
     Init_UART_Pins();
     uart_Init_9600();
+    uart_Print(connectedText);
 
     // Disable the GPIO power-on default high-impedance mode to activate
     // previously configured port settings
@@ -52,10 +55,22 @@ void main(void)
     __enable_interrupt();   // Enables interrupts
     __no_operation();       // For debugger
 
+    Ultrasonic_Wait(65000); // Wait some time (Maybe 65000 ms)
     while(1)
     {
         Run_Ultrasonic();
-        Ultrasonic_Wait(60000);
+        if(distance < 15) { // If distance is less than 15 (maybe cm?)
+            gpioWrite(3,2,1);   // Turn on Red LED
+            gpioWrite(3,3,1);   // Turn on Blue LED
+            gpioWrite(3,7,1);   // Turn on Buzzer
+            uart_Print(alertText);  // Print "DANGER NEAR" to terminal
+        }
+        else {  // If distance is further than 15
+            gpioWrite(3,2,0);   // Turn off Red LED
+            gpioWrite(3,3,0);   // Turn off Blue LED
+            gpioWrite(3,7,0);   // Turn off buzzer
+        }
+        Ultrasonic_Wait(65000); // Wait some time (Maybe 65000 ms)
     }
 }
 
@@ -116,10 +131,10 @@ void Init_Servo()
 void Init_LED()
 {
     gpioInit(3,2,1); // Set Pin 3.2 to OUTPUT (RED LED)
-    gpioWrite(3,2,1); // Set Pin 3.2 to LOW
+    gpioWrite(3,2,0); // Set Pin 3.2 to LOW
 
     gpioInit(3,3,1); // Set Pin 3.3 to OUTPUT (BLUE LED)
-    gpioWrite(3,2,1); // Set Pin 3.3 to LOW
+    gpioWrite(3,3,0); // Set Pin 3.3 to LOW
 }
 
 // Setup Wifi Module
@@ -199,14 +214,14 @@ void Run_Ultrasonic()
     __delay_cycles(10); // Delay 10 microseconds
     gpioWrite(5,1,0);   // Set Trig Pin LOW
     pulseCount = 0;
-    countLow = 0;   // Set count of LOW part of echo pulse to 0
-    countHigh = 0;  // Set count of HIGH part of echo pulse to 0
+    unsigned int countLow = 0;   // Set count of LOW part of echo pulse to 0
+    unsigned int countHigh = 0;  // Set count of HIGH part of echo pulse to 0
     while(gpioRead(5,0) == 0);
     countLow = pulseCount * 5;   // Set count of LOW part of echo pulse to pulseCount times 5 because of TB2CCR0 offset
     while(gpioRead(5,0) == 1);
     countHigh = pulseCount * 5;  // Set count of HIGH part of echo pulse to pulseCount times 5 because of TB2CCR0 offset
-    pulseWidth = countHigh - countLow; // Pulse width = total count - count of LOW part
-    distance = pulseWidth / 58.0;   // Conversion to cm according to datasheet
+    unsigned int pulseWidth = countHigh - countLow; // Pulse width = total count - count of LOW part
+    distance = (unsigned long) pulseWidth / 58.0;   // Conversion to cm according to datasheet
 }
 
 // Will be used to set servo angle
@@ -216,13 +231,10 @@ void setServo()
 }
 
 // Used to make the ultrasonic wait without using delay
-void Ultrasonic_Wait(unsigned long timeToWait)
+void Ultrasonic_Wait(unsigned int timeToWait)
 {
-    unsigned long timeWaited = pulseCount;
-    while((pulseCount - timeWaited) < timeToWait)
-    {
-
-    }
+    unsigned int timeWaited = pulseCount;
+    while((pulseCount - timeWaited) < timeToWait);
 }
 
 
@@ -268,6 +280,9 @@ __interrupt void EUSCI_B1_I2C_ISR(void)
 #pragma vector = TIMER2_B0_VECTOR
 __interrupt void Timer2_B0_ISR(void)
 {
+    if(TB2CCR0 >= 65100) {
+        TB2CCR0 = 50;
+    }
     pulseCount++;
     TB2CCR0 += 50;               // Add Offset to TB0CCR0 (anything smaller than 50 is too fast)
 }
