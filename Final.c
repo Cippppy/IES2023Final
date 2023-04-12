@@ -31,6 +31,7 @@ void Init_CO2();
 void Init_UART_Pins();
 void Run_Ultrasonic();
 void Ultrasonic_Wait(unsigned int timeToWait);
+void setServo(unsigned int angle);
 
 
 void main(void)
@@ -55,17 +56,18 @@ void main(void)
     __enable_interrupt();   // Enables interrupts
     __no_operation();       // For debugger
 
-    Ultrasonic_Wait(65000); // Wait some time (Maybe 65000 ms)
     while(1)
     {
         Run_Ultrasonic();
         if(distance < 15) { // If distance is less than 15 (maybe cm?)
+            setServo(180);
             gpioWrite(3,2,1);   // Turn on Red LED
             gpioWrite(3,3,1);   // Turn on Blue LED
             gpioWrite(3,7,1);   // Turn on Buzzer
             uart_Print(alertText);  // Print "DANGER NEAR" to terminal
         }
         else {  // If distance is further than 15
+            setServo(0);
             gpioWrite(3,2,0);   // Turn off Red LED
             gpioWrite(3,3,0);   // Turn off Blue LED
             gpioWrite(3,7,0);   // Turn off buzzer
@@ -121,10 +123,10 @@ void Init_Servo()
     P6SEL1 &= ~BIT0; // P6.0 options select
 
     // Configure Timer_B3 for PWM
-    TB3CCR0 = 20000;                         // PWM Period of 50Hz
+    TB3CCR0 = 39000;                         // PWM Period of 50Hz
     TB3CCTL1 = OUTMOD_7;                      // CCR1 reset/set
-    TB3CCR1 = 20000*0.075;                   // CCR1 PWM duty cycle
-    TB3CTL = TBSSEL__SMCLK | MC__UP | TBCLR;  // SMCLK, up mode, clear TBR
+    TB3CCR1 = 39000*0.075;                   // CCR1 PWM duty cycle
+    TB3CTL = TBSSEL__SMCLK | MC__UP | TBCLR | ID_2;  // SMCLK, up mode, clear TBR, Divide clock by 4
 }
 
 // Setup LEDs to Pin 3.2 and 3.3
@@ -208,14 +210,15 @@ void Init_CO2()
 
 void Run_Ultrasonic()
 {
+    TB2CCR0 = 50;
+    pulseCount = 0;
+    unsigned int countLow = 0x00;   // Set count of LOW part of echo pulse to 0
+    unsigned int countHigh = 0x00;  // Set count of HIGH part of echo pulse to 0
     gpioWrite(5,1,0);   // Set Trig pin LOW
     __delay_cycles(2);  // Delay 5 microseconds
     gpioWrite(5,1,1);   // Set Trig pin HIGH
     __delay_cycles(10); // Delay 10 microseconds
     gpioWrite(5,1,0);   // Set Trig Pin LOW
-    pulseCount = 0;
-    unsigned int countLow = 0;   // Set count of LOW part of echo pulse to 0
-    unsigned int countHigh = 0;  // Set count of HIGH part of echo pulse to 0
     while(gpioRead(5,0) == 0);
     countLow = pulseCount * 5;   // Set count of LOW part of echo pulse to pulseCount times 5 because of TB2CCR0 offset
     while(gpioRead(5,0) == 1);
@@ -225,16 +228,24 @@ void Run_Ultrasonic()
 }
 
 // Will be used to set servo angle
-void setServo()
+void setServo(unsigned int angle)
 {
-    TB3CCR1 = 0.0;
+    if(angle >= 180) {
+        TB3CCR1 = 39000 * 0.125;
+    }
+    else if(angle <= 0) {
+        TB3CCR1 = 39000 * 0.03;
+    }
+    else {
+        TB3CCR1 = 20.6 * angle + 1170;
+    }
 }
 
 // Used to make the ultrasonic wait without using delay
 void Ultrasonic_Wait(unsigned int timeToWait)
 {
     unsigned int timeWaited = pulseCount;
-    while((pulseCount - timeWaited) < timeToWait);
+    while((pulseCount - timeWaited) <= timeToWait);
 }
 
 
@@ -280,9 +291,6 @@ __interrupt void EUSCI_B1_I2C_ISR(void)
 #pragma vector = TIMER2_B0_VECTOR
 __interrupt void Timer2_B0_ISR(void)
 {
-    if(TB2CCR0 >= 65100) {
-        TB2CCR0 = 50;
-    }
     pulseCount++;
     TB2CCR0 += 50;               // Add Offset to TB0CCR0 (anything smaller than 50 is too fast)
 }
